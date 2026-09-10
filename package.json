@@ -17,5 +17,10 @@
   "bugs": {
     "url": "https://github.com/aguscepeda/met-de-sis-ll-GYMMANAGER/issues"
   },
-  "homepage": "https://github.com/aguscepeda/met-de-sis-ll-GYMMANAGER#readme"
+  "homepage": "https://github.com/aguscepeda/met-de-sis-ll-GYMMANAGER#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.23.0"
+  }
 }
