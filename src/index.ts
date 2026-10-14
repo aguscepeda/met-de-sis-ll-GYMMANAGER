@@ -7,6 +7,7 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
+app.use(express.static('public'));
 
 app.get('/health', async (req, res) => {
   const result = await pool.query('SELECT NOW()');

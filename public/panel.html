@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GymManager | Panel de gestión</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/app.js" defer></script>
+</head>
+
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/">Gym<span>Manager</span></a>
+
+    <p class="sidebar-label">MI PANEL</p>
+
+    <nav id="role-navigation" aria-label="Menú principal"></nav>
+
+    <p class="sidebar-footer">Gestión de gimnasio</p>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <span>Panel de gestión</span>
+
+      <div class="profile-actions">
+        <span id="profile-label" class="badge"></span>
+        <a class="exit-link" href="/">Cambiar perfil</a>
+      </div>
+    </header>
+
+    <div class="content">
+      <noscript>
+        <p>
+          Activá JavaScript para navegar por las secciones del panel.
+        </p>
+      </noscript>
+
+      <section class="connection" aria-label="Estado del sistema">
+        <div>
+          <strong>Estado del sistema</strong>
+
+          <p id="connection-status" role="status">
+            Comprobando conexión…
+          </p>
+        </div>
+
+        <button
+          id="check-connection"
+          class="button-secondary"
+          type="button"
+        >
+          Verificar conexión
+        </button>
+      </section>
+
+      <section aria-labelledby="section-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">GESTIÓN DEL GIMNASIO</p>
+
+            <h1 id="section-title">Mi panel</h1>
+
+            <p id="section-description" class="description">
+              Cargando las secciones de tu perfil…
+            </p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2 id="list-title">Listado</h2>
+            <span class="badge">En desarrollo</span>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <caption class="sr-only" id="table-caption">
+                Listado de la sección seleccionada
+              </caption>
+
+              <thead id="table-head"></thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+
+          <p class="panel-note">
+            Acceso de demostración. La consulta y el registro de datos
+            se habilitarán al conectar cada sección con la API
+            y los usuarios del sistema.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
