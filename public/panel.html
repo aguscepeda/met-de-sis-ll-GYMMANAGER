@@ -11,7 +11,6 @@
 <body>
   <aside class="sidebar">
     <a class="brand" href="/">Gym<span>Manager</span></a>
-
     <p class="sidebar-label">MI PANEL</p>
 
     <nav id="role-navigation" aria-label="Menú principal"></nav>
@@ -31,15 +30,12 @@
 
     <div class="content">
       <noscript>
-        <p>
-          Activá JavaScript para navegar por las secciones del panel.
-        </p>
+        <p>Activá JavaScript para navegar por las secciones del panel.</p>
       </noscript>
 
       <section class="connection" aria-label="Estado del sistema">
         <div>
           <strong>Estado del sistema</strong>
-
           <p id="connection-status" role="status">
             Comprobando conexión…
           </p>
@@ -56,16 +52,137 @@
 
       <section aria-labelledby="section-title">
         <div class="section-heading">
-          <div>
-            <p class="eyebrow">GESTIÓN DEL GIMNASIO</p>
-
-            <h1 id="section-title">Mi panel</h1>
-
-            <p id="section-description" class="description">
-              Cargando las secciones de tu perfil…
-            </p>
-          </div>
+          <p class="eyebrow">GESTIÓN DEL GIMNASIO</p>
+          <h1 id="section-title">Mi panel</h1>
+          <p id="section-description" class="description">
+            Cargando las secciones de tu perfil…
+          </p>
         </div>
+
+        <div id="class-actions" class="class-actions" hidden>
+          <button
+            id="open-class-form"
+            class="button-primary"
+            type="button"
+            aria-controls="class-form-section"
+            aria-expanded="false"
+          >
+            + Crear clase
+          </button>
+        </div>
+
+        <section
+          id="class-form-section"
+          class="form-panel"
+          aria-labelledby="class-form-title"
+          hidden
+        >
+          <div class="panel-heading">
+            <h2 id="class-form-title">Nueva clase</h2>
+
+            <button
+              id="close-class-form"
+              class="button-secondary"
+              type="button"
+            >
+              Cerrar
+            </button>
+          </div>
+
+          <form id="class-form">
+            <div class="form-grid">
+              <div class="form-field full-width">
+                <label for="class-name">Nombre de la clase</label>
+                <input
+                  id="class-name"
+                  name="nombre"
+                  type="text"
+                  maxlength="100"
+                  required
+                  placeholder="Ej.: Entrenamiento funcional"
+                >
+              </div>
+
+              <div id="professor-field" class="form-field full-width">
+                <label for="class-professor">Profesor</label>
+                <select
+                  id="class-professor"
+                  name="profesor_id"
+                  aria-describedby="professor-note"
+                  disabled
+                >
+                  <option value="">
+                    Pendiente de cargar profesores desde la API
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="class-start">Fecha y hora de inicio</label>
+                <input
+                  id="class-start"
+                  name="inicio"
+                  type="datetime-local"
+                  required
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="class-end">Fecha y hora de fin</label>
+                <input
+                  id="class-end"
+                  name="fin"
+                  type="datetime-local"
+                  required
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="class-capacity">Cupo máximo</label>
+                <input
+                  id="class-capacity"
+                  name="cupo"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  placeholder="Ej.: 15"
+                >
+              </div>
+            </div>
+
+            <p class="field-help">
+              Ingresá los horarios en la hora local del gimnasio.
+            </p>
+
+            <p id="professor-note" class="panel-note"></p>
+
+            <div class="form-buttons">
+              <button class="button-secondary" type="submit">
+                Validar formulario
+              </button>
+
+              <button
+                class="button-primary"
+                type="button"
+                aria-describedby="save-note"
+                disabled
+              >
+                Guardar clase
+              </button>
+            </div>
+
+            <p id="save-note" class="field-help">
+              El guardado se habilitará cuando conectemos la API.
+            </p>
+
+            <p
+              id="class-form-message"
+              class="form-message"
+              role="status"
+            ></p>
+          </form>
+        </section>
 
         <div class="panel">
           <div class="panel-heading">
@@ -78,7 +195,6 @@
               <caption class="sr-only" id="table-caption">
                 Listado de la sección seleccionada
               </caption>
-
               <thead id="table-head"></thead>
               <tbody id="table-body"></tbody>
             </table>

@@ -64,14 +64,19 @@ const profiles = {
   },
 };
 
+const role = new URLSearchParams(window.location.search).get('rol');
+
+const navigation = document.querySelector('#role-navigation');
 const connectionStatus = document.querySelector('#connection-status');
 const checkConnectionButton = document.querySelector('#check-connection');
-const navigation = document.querySelector('#role-navigation');
+
+const classActions = document.querySelector('#class-actions');
+const classFormSection = document.querySelector('#class-form-section');
+const classForm = document.querySelector('#class-form');
+const classFormMessage = document.querySelector('#class-form-message');
+const openClassFormButton = document.querySelector('#open-class-form');
 
 function initializePanel() {
-  const role = new URLSearchParams(window.location.search).get('rol');
-
-  // La lista explícita evita aceptar perfiles desconocidos.
   if (!Object.hasOwn(profiles, role)) {
     window.location.replace('/');
     return;
@@ -92,14 +97,14 @@ function initializePanel() {
     button.dataset.section = sectionName;
     button.textContent = sections[sectionName].title;
 
-    button.addEventListener('click', () => {
-      showSection(sectionName);
-    });
+    button.addEventListener('click', () => showSection(sectionName));
 
     return button;
   });
 
   navigation.replaceChildren(...buttons);
+
+  configureClassForm();
   showSection(profile.sections[0]);
 
   checkConnectionButton.addEventListener('click', checkConnection);
@@ -107,9 +112,11 @@ function initializePanel() {
 }
 
 function showSection(sectionName) {
-  const section = sections[sectionName];
+  const profile = profiles[role];
 
-  if (!section) return;
+  if (!profile || !profile.sections.includes(sectionName)) return;
+
+  const section = sections[sectionName];
 
   document.querySelector('#section-title').textContent = section.title;
   document.querySelector('#section-description').textContent =
@@ -129,6 +136,17 @@ function showSection(sectionName) {
     }
   });
 
+  const canCreateHere =
+    (role === 'recepcionista' && sectionName === 'clases') ||
+    (role === 'profesor' && sectionName === 'clasesAsignadas');
+
+  classActions.hidden = !canCreateHere;
+  setClassFormVisibility(false);
+
+  renderEmptyTable(section);
+}
+
+function renderEmptyTable(section) {
   const headerRow = document.createElement('tr');
 
   section.columns.forEach((column) => {
@@ -157,6 +175,112 @@ function showSection(sectionName) {
   row.append(cell);
 
   document.querySelector('#table-body').replaceChildren(row);
+}
+
+function setClassFormVisibility(isVisible) {
+  classFormSection.hidden = !isVisible;
+  openClassFormButton.setAttribute('aria-expanded', String(isVisible));
+}
+
+function clearFormMessage() {
+  classFormMessage.textContent = '';
+  classFormMessage.className = 'form-message';
+}
+
+function configureClassForm() {
+  document.querySelector('#professor-field').hidden =
+    role !== 'recepcionista';
+
+  document.querySelector('#professor-note').textContent =
+    role === 'recepcionista'
+      ? 'La selección de profesor se habilitará al cargar el listado desde la API.'
+      : 'La clase se asociará al profesor identificado por el sistema. El acceso actual todavía no identifica una cuenta.';
+
+  openClassFormButton.addEventListener('click', () => {
+    clearFormMessage();
+    setClassFormVisibility(true);
+    document.querySelector('#class-name').focus();
+  });
+
+  document.querySelector('#close-class-form').addEventListener('click', () => {
+    setClassFormVisibility(false);
+    openClassFormButton.focus();
+  });
+
+  classForm.addEventListener('input', clearFormMessage);
+  classForm.addEventListener('change', clearFormMessage);
+
+  // Borra un mensaje anterior si el navegador detecta un campo inválido.
+  classForm.addEventListener('invalid', clearFormMessage, true);
+
+  classForm.addEventListener('submit', handleClassValidation);
+}
+
+function readClassForm() {
+  const values = new FormData(classForm);
+
+  return {
+    nombre: String(values.get('nombre') || '').trim(),
+    inicio: String(values.get('inicio') || ''),
+    fin: String(values.get('fin') || ''),
+    cupo: Number(values.get('cupo')),
+  };
+}
+
+function validateClassData(data) {
+  if (!data.nombre) {
+    return {
+      field: '#class-name',
+      message: 'Ingresá un nombre que no esté compuesto solo por espacios.',
+    };
+  }
+
+  const start = new Date(data.inicio).getTime();
+  const end = new Date(data.fin).getTime();
+
+  if (!Number.isFinite(start) || start <= Date.now()) {
+    return {
+      field: '#class-start',
+      message: 'El inicio debe ser una fecha y hora futuras.',
+    };
+  }
+
+  if (!Number.isFinite(end) || end <= start) {
+    return {
+      field: '#class-end',
+      message: 'La fecha y hora de fin deben ser posteriores al inicio.',
+    };
+  }
+
+  if (!Number.isSafeInteger(data.cupo) || data.cupo <= 0) {
+    return {
+      field: '#class-capacity',
+      message: 'El cupo debe ser un número entero mayor que cero.',
+    };
+  }
+
+  return null;
+}
+
+function handleClassValidation(event) {
+  event.preventDefault();
+  clearFormMessage();
+
+  if (!classForm.reportValidity()) return;
+
+  const data = readClassForm();
+  const error = validateClassData(data);
+
+  if (error) {
+    classFormMessage.textContent = error.message;
+    classFormMessage.className = 'form-message error';
+    document.querySelector(error.field).focus();
+    return;
+  }
+
+  classFormMessage.textContent =
+    'Nombre, horario y cupo válidos. La clase no se guardó: falta conectar la API y resolver la identidad o selección del profesor.';
+  classFormMessage.className = 'form-message success';
 }
 
 async function checkConnection() {
