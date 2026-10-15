@@ -1,6 +1,7 @@
 import express from 'express';
 import { pool } from './db';
 import clasesRoutes from './routes/clases.routes';
+import inscripcionesRoutes from './routes/inscripciones.routes'; 
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.use(express.static('public'));
 
 // Rutas de la API
 app.use('/api/clases', clasesRoutes);
+app.use('/api/inscripciones', inscripcionesRoutes); 
 
 // Endpoint de diagnóstico del sistema
 app.get('/health', async (_req, res) => {
