@@ -46,5 +46,29 @@ npm run dev
 
 Probar que funciona entrando a http://localhost:3000/health.
 
+## Endpoints de clases
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/clases` | Lista las clases. Filtro opcional `?profesor_id=` |
+| GET | `/api/clases/:id` | Devuelve una clase |
+| POST | `/api/clases` | Crea una clase en estado `programada` |
+| PATCH | `/api/clases/:id/finalizar` | Pasa la clase a `finalizada`. Solo si ya pasó su horario de fin |
+| PATCH | `/api/clases/:id/cancelar` | Pasa la clase a `cancelada` y cancela sus inscripciones activas. Solo antes del inicio |
+
+Estados de una clase: `programada` → `finalizada` o `cancelada`. Los dos últimos son definitivos: intentar cambiarlos devuelve 409.
+
+Ejemplo:
+
+curl -X PATCH http://localhost:3000/api/clases/1/cancelar
+
+Respuesta:
+
+{ "id": 1, "estado": "cancelada", "inscripciones_canceladas": 2, ... }
+
+Códigos de error: 400 (datos o ID inválidos), 404 (la clase no existe), 409 (la transición no está permitida), 500 (error interno).
+
+El análisis de diseño está en [docs/decisiones-diseno.md](docs/decisiones-diseno.md).
+
 ## Servicios necesarios
 - PostgreSQL 16, se levanta con docker compose up -d (ver docker-compose.yml)

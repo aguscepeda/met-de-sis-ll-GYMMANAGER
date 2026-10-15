@@ -86,3 +86,79 @@ Reproducible a nivel HTTP con `npm run probar:inscripciones` (lanza solicitudes 
 ### 6. Trade-offs asumidos
 - El cupo se calcula con `COUNT` en cada inscripción (sin contador denormalizado): más simple y siempre consistente, a costa de una consulta extra por alta.
 - Se puede cancelar solo antes del inicio de la clase (decisión de negocio, fácil de cambiar en `cancelar()`).
+
+---
+
+## Estados de clase: finalizar y cancelar
+
+### 1. Código analizado
+- [`src/services/clases.service.ts`](../src/services/clases.service.ts): `crear()` (línea 13), `finalizar()` (línea 130), `cancelar()` (línea 167) y `bloquearClaseProgramada()` (línea 211).
+- [`src/controllers/clases.controller.ts`](../src/controllers/clases.controller.ts): `responderError()` (línea 10) y los handlers `finalizar` y `cancelar`.
+- [`src/routes/clases.routes.ts`](../src/routes/clases.routes.ts): rutas `PATCH /:id/finalizar` y `PATCH /:id/cancelar` (líneas 9 y 10).
+- [`src/types/clase.ts`](../src/types/clase.ts): tipo `EstadoClase` e interfaz `ClaseCancelada`.
+- Punto de contacto con inscripciones: [`src/services/inscripciones.service.ts`](../src/services/inscripciones.service.ts), línea 28, donde `inscribir()` bloquea la fila de la clase.
+
+### 2. Diagnóstico
+- **Estado sin comportamiento.** La tabla `clase` ya tenía la columna `estado` con el `CHECK` `programada | finalizada | cancelada`, pero ningún código la cambiaba. Toda clase quedaba `programada` para siempre.
+- **Máquina de estados implícita.** Definimos las transiciones permitidas: `programada → finalizada` y `programada → cancelada`. `finalizada` y `cancelada` son terminales. Cualquier otra transición es un conflicto con el estado actual del recurso (HTTP 409).
+- **Consistencia entre agregados.** Si cancelamos una clase y dejamos sus inscripciones `activa`, el alumno figura anotado a una clase que no se dicta. El cambio de estado de la clase y la baja de sus inscripciones tienen que ser una sola operación atómica.
+- **Condición de carrera.** Sin coordinación, una inscripción puede leer la clase como `programada`, la cancelación termina, y la inscripción se confirma después sobre una clase ya cancelada.
+- **Manejo de errores del módulo de clases.** `ClasesController.crear()` respondía 400 ante cualquier excepción, incluso errores de la base. Con `profesor_id: "abc"`, el cliente recibía el mensaje interno de PostgreSQL (`invalid input syntax for type integer`). Además, `GET /api/clases/1.5` llegaba a la consulta SQL y devolvía 500.
+
+### 3. Alternativas consideradas
+**Forma de la API**
+1. `PATCH /api/clases/:id` con `{ "estado": "cancelada" }`. Es genérico, pero obliga a validar en un solo método qué transición pidió el cliente, y cada transición tiene reglas distintas.
+2. `PATCH /api/clases/:id/finalizar` y `PATCH /api/clases/:id/cancelar`. Cada acción tiene su endpoint, su método de servicio y sus reglas.
+
+**Estado guardado o calculado**
+1. Calcular el estado a partir de la hora (`fin < NOW()` implica finalizada). No necesita una acción manual, pero no permite expresar "cancelada", que depende de una decisión del gimnasio y no del reloj.
+2. Guardar el estado en la columna y cambiarlo con acciones explícitas.
+
+**Qué pasa con las inscripciones al cancelar**
+1. Dejarlas `activa` y que el resto del sistema filtre por estado de la clase. Cada consulta futura tendría que recordar ese filtro.
+2. Borrarlas. Se pierde el historial.
+3. Pasarlas a `cancelada` con `cancelada_en = NOW()` en la misma transacción. Reutiliza la baja lógica que ya usa el módulo de inscripciones.
+
+**Concurrencia con inscripciones**
+1. No coordinar y aceptar la carrera.
+2. Nivel de aislamiento `SERIALIZABLE` y reintentos ante fallos de serialización.
+3. `SELECT ... FOR UPDATE` sobre la fila de la clase, el mismo lock que ya toma `inscribir()`.
+
+### 4. Decisión
+- **API:** endpoints por acción (`/finalizar`, `/cancelar`).
+- **Estado:** guardado en la columna, sin cálculo automático.
+- **Reglas de transición:**
+  - Finalizar solo si la clase está `programada` y ya pasó su `fin`. Las inscripciones activas se mantienen como registro de asistencia.
+  - Cancelar solo si la clase está `programada` y todavía no empezó. En la misma transacción pasamos sus inscripciones activas a `cancelada`, y la respuesta informa cuántas (`inscripciones_canceladas`).
+  - Las dos acciones comparten `bloquearClaseProgramada()`, que toma el lock y rechaza estados terminales.
+- **Concurrencia:** `FOR UPDATE` sobre la clase. Coordinamos con el integrante 2 para usar el mismo lock que `inscribir()`. Así, la operación que llega segunda espera, y al continuar ve el estado nuevo.
+- **Errores:** el servicio de clases lanza `ReglaNegocioError` (de `src/errors.ts`, compartido con inscripciones) con su código HTTP. `responderError()` traduce esos errores y responde 500 genérico ante cualquier otro, registrándolo con `console.error`. También validamos `profesor_id` y los IDs de ruta como enteros positivos antes de consultar la base.
+
+### 5. Evidencia y trade-offs
+- **Commit:** `fe3b755` en la rama `feat/estados-clases`.
+- **Prueba del flujo completo** contra la API y PostgreSQL 16 (36 chequeos, todos OK):
+
+| Caso | Resultado |
+|------|-----------|
+| Alta con `profesor_id: "abc"` | 400 con mensaje propio (antes devolvía el error de PostgreSQL) |
+| `GET /api/clases/1.5` | 400 (antes 500) |
+| Cancelar o finalizar una clase inexistente | 404 |
+| Cancelar una clase futura con 2 inscriptos | 200, `estado: cancelada`, `inscripciones_canceladas: 2` |
+| Inscribir en una clase cancelada | 409 |
+| Finalizar una clase que todavía no terminó | 409 |
+| Cancelar una clase en curso | 409 |
+| Finalizar una clase terminada | 200; después, cancelar o finalizar de nuevo da 409 |
+| 20 rondas de cancelación en paralelo con 4 inscripciones | 0 inscripciones activas en clases canceladas |
+
+- **Beneficios:**
+  - Las reglas de cada transición quedan en un método con nombre propio, y el lock y el chequeo de estado terminal en un solo lugar.
+  - Una clase cancelada nunca queda con alumnos activos, ni siquiera ante pedidos simultáneos.
+  - El cliente recibe 400, 404 o 409 según el caso, y nunca un mensaje interno de la base.
+- **Costos:**
+  - Alguien tiene que finalizar cada clase a mano. Si nadie lo hace, la clase sigue `programada` después de terminar. El módulo de inscripciones lo compensa comparando `inicio` con la hora actual.
+  - Mientras dura la cancelación, el lock frena las inscripciones a esa clase. El impacto es bajo porque la transacción hace dos `UPDATE`.
+  - La función `esIdValido` está duplicada en los servicios de clases e inscripciones.
+  - La prueba de concurrencia muestra que la carrera no apareció en 20 rondas. No demuestra que sea imposible; esa garantía la da el lock.
+- **Pendientes detectados, sin cambiar:**
+  - `crear()` acepta clases con fecha pasada.
+  - Un profesor inexistente responde 400, mientras que inscripciones responde 404 ante un alumno o una clase inexistente.
