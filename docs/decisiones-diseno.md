@@ -81,7 +81,6 @@ Con una clase de cupo 1 y dos solicitudes simultáneas (forzando el solapamiento
 - **Sin** `FOR UPDATE`: ambas se inscriben (2 inscriptos en cupo 1).
 - **Con** `FOR UPDATE`: una se inscribe y la otra recibe "sin cupo" (1 inscripto).
 
-Reproducible a nivel HTTP con `npm run probar:inscripciones` (lanza solicitudes paralelas y verifica que haya exactamente un 201).
 
 ### 6. Trade-offs asumidos
 - El cupo se calcula con `COUNT` en cada inscripción (sin contador denormalizado): más simple y siempre consistente, a costa de una consulta extra por alta.
