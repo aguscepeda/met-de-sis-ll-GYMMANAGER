@@ -1,5 +1,6 @@
 import express from 'express';
 import { pool } from './db';
+import clasesRoutes from './routes/clases.routes';
 
 const app = express();
 
@@ -7,8 +8,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
+// Rutas de la API
+app.use('/api/clases', clasesRoutes);
+
 // Endpoint de diagnóstico del sistema
-app.get('/health', async (req, res) => {
+app.get('/health', async (_req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
     res.json({
