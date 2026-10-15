@@ -15,6 +15,10 @@ export interface ClaseConProfesor extends Clase {
   profesor_especialidad: string;
 }
 
+export interface ClaseCancelada extends Clase {
+  inscripciones_canceladas: number;
+}
+
 export interface CrearClaseDTO {
   nombre: string;
   profesor_id: number;
