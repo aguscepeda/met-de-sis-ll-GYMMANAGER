@@ -105,10 +105,6 @@ Con una clase de cupo 1 y dos solicitudes simultáneas (forzando el solapamiento
 - **Manejo de errores del módulo de clases.** `ClasesController.crear()` respondía 400 ante cualquier excepción, incluso errores de la base. Con `profesor_id: "abc"`, el cliente recibía el mensaje interno de PostgreSQL (`invalid input syntax for type integer`). Además, `GET /api/clases/1.5` llegaba a la consulta SQL y devolvía 500.
 
 ### 3. Alternativas consideradas
-**Forma de la API**
-1. `PATCH /api/clases/:id` con `{ "estado": "cancelada" }`. Es genérico, pero obliga a validar en un solo método qué transición pidió el cliente, y cada transición tiene reglas distintas.
-2. `PATCH /api/clases/:id/finalizar` y `PATCH /api/clases/:id/cancelar`. Cada acción tiene su endpoint, su método de servicio y sus reglas.
-
 **Estado guardado o calculado**
 1. Calcular el estado a partir de la hora (`fin < NOW()` implica finalizada). No necesita una acción manual, pero no permite expresar "cancelada", que depende de una decisión del gimnasio y no del reloj.
 2. Guardar el estado en la columna y cambiarlo con acciones explícitas.
@@ -118,10 +114,6 @@ Con una clase de cupo 1 y dos solicitudes simultáneas (forzando el solapamiento
 2. Borrarlas. Se pierde el historial.
 3. Pasarlas a `cancelada` con `cancelada_en = NOW()` en la misma transacción. Reutiliza la baja lógica que ya usa el módulo de inscripciones.
 
-**Concurrencia con inscripciones**
-1. No coordinar y aceptar la carrera.
-2. Nivel de aislamiento `SERIALIZABLE` y reintentos ante fallos de serialización.
-3. `SELECT ... FOR UPDATE` sobre la fila de la clase, el mismo lock que ya toma `inscribir()`.
 
 ### 4. Decisión
 - **API:** endpoints por acción (`/finalizar`, `/cancelar`).
@@ -134,21 +126,6 @@ Con una clase de cupo 1 y dos solicitudes simultáneas (forzando el solapamiento
 - **Errores:** el servicio de clases lanza `ReglaNegocioError` (de `src/errors.ts`, compartido con inscripciones) con su código HTTP. `responderError()` traduce esos errores y responde 500 genérico ante cualquier otro, registrándolo con `console.error`. También validamos `profesor_id` y los IDs de ruta como enteros positivos antes de consultar la base.
 
 ### 5. Evidencia y trade-offs
-- **Commit:** `fe3b755` en la rama `feat/estados-clases`.
-- **Prueba del flujo completo** contra la API y PostgreSQL 16 (36 chequeos, todos OK):
-
-| Caso | Resultado |
-|------|-----------|
-| Alta con `profesor_id: "abc"` | 400 con mensaje propio (antes devolvía el error de PostgreSQL) |
-| `GET /api/clases/1.5` | 400 (antes 500) |
-| Cancelar o finalizar una clase inexistente | 404 |
-| Cancelar una clase futura con 2 inscriptos | 200, `estado: cancelada`, `inscripciones_canceladas: 2` |
-| Inscribir en una clase cancelada | 409 |
-| Finalizar una clase que todavía no terminó | 409 |
-| Cancelar una clase en curso | 409 |
-| Finalizar una clase terminada | 200; después, cancelar o finalizar de nuevo da 409 |
-| 20 rondas de cancelación en paralelo con 4 inscripciones | 0 inscripciones activas en clases canceladas |
-
 - **Beneficios:**
   - Las reglas de cada transición quedan en un método con nombre propio, y el lock y el chequeo de estado terminal en un solo lugar.
   - Una clase cancelada nunca queda con alumnos activos, ni siquiera ante pedidos simultáneos.
@@ -158,10 +135,6 @@ Con una clase de cupo 1 y dos solicitudes simultáneas (forzando el solapamiento
   - Mientras dura la cancelación, el lock frena las inscripciones a esa clase. El impacto es bajo porque la transacción hace dos `UPDATE`.
   - La función `esIdValido` está duplicada en los servicios de clases e inscripciones.
   - La prueba de concurrencia muestra que la carrera no apareció en 20 rondas. No demuestra que sea imposible; esa garantía la da el lock.
-- **Pendientes detectados, sin cambiar:**
-  - `crear()` acepta clases con fecha pasada.
-  - Un profesor inexistente responde 400, mientras que inscripciones responde 404 ante un alumno o una clase inexistente.
-
 
 ## Interfaz web e integración con la API
 
