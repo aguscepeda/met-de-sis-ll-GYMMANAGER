@@ -35,8 +35,11 @@ docker compose up -d
 
 
 5. Crear las tablas
-
+(mac,Linux)
 docker exec -i $(docker compose ps -q db) psql -U gymmanager -d gymmanager < sql/init.sql
+
+(Windows powershell)
+Get-Content sql/init.sql | docker exec -i (docker compose ps -q db) psql -U gymmanager -d gymmanager
 
 
 ## Ejecución
