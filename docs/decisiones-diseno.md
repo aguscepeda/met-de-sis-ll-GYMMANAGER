@@ -161,3 +161,49 @@ Con una clase de cupo 1 y dos solicitudes simultáneas (forzando el solapamiento
 - **Pendientes detectados, sin cambiar:**
   - `crear()` acepta clases con fecha pasada.
   - Un profesor inexistente responde 400, mientras que inscripciones responde 404 ante un alumno o una clase inexistente.
+
+
+## Interfaz web e integración con la API
+
+### 1. Código analizado
+`public/panel.html`, `public/js/app.js` y `public/css/styles.css`.
+También se agregaron los endpoints de lectura de alumnos y profesores
+en `src/app.ts`.
+
+### 2. Diagnóstico
+La interfaz necesita leer formularios, validar datos, consultar la API
+y mostrar resultados. Mezclar estas tareas dificulta su mantenimiento.
+Los perfiles también comparten estructura visual.
+
+### 3. Alternativas
+- Concentrar las tareas en una función: menos funciones, pero mayor mezcla
+  de responsabilidades.
+- Separar lectura, validación, comunicación y presentación: mayor claridad,
+  con más funciones que coordinar.
+- Aplicar Strategy a las validaciones: descartado porque actualmente
+  no necesitamos intercambiar políticas de validación.
+
+### 4. Decisión
+Usamos un panel compartido y funciones con responsabilidades diferenciadas:
+`readClassForm()`, `validateClassData()`, `createClass()` y funciones
+de presentación. Centralizamos las peticiones en `api()` y reutilizamos
+la construcción de tablas.
+
+Priorizamos nombres descriptivos y separación de responsabilidades,
+sin introducir patrones por obligación.
+
+### 5. Evidencia y trade-offs
+Se conectaron los listados, la creación de clases, las inscripciones
+y las acciones de cancelación y finalización.
+
+Realizamos pruebas manuales de las validaciones del formulario y de
+los flujos de gestión. Todos los casos probados funcionaron según
+lo esperado. El guardado de una clase devolvió su ID desde la API.
+
+Como costos, aumentó la cantidad de funciones y `app.js` concentra
+varias secciones. Una futura división en módulos puede mejorar
+su organización.
+
+La validación del navegador no reemplaza la del backend. Los perfiles
+y la selección de personas son de demostración: no autentican usuarios
+ni controlan permisos reales.

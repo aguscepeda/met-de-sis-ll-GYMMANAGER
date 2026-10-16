@@ -620,3 +620,25 @@ th {
     transform: none;
   }
 }
+
+#table-body td:not(.empty-state) {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.6;
+  vertical-align: middle;
+}
+
+#table-body tr:last-child td {
+  border-bottom: 0;
+}
+
+#table-body tr:hover td:not(.empty-state) {
+  background: #fafafa;
+}
+
+@media (max-width: 760px) {
+  #table-body td:not(.empty-state) {
+    padding: 14px 16px;
+  }
+}
