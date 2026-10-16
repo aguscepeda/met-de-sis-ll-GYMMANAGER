@@ -34,12 +34,12 @@ cp .env.example .env
 docker compose up -d
 
 
-5. Crear las tablas
-(mac,Linux)
-docker exec -i $(docker compose ps -q db) psql -U gymmanager -d gymmanager < sql/init.sql
+5. Crear las tablas y cargar los datos de ejemplo (Windows, macOS y Linux)
 
-(Windows powershell)
-Get-Content sql/init.sql | docker exec -i (docker compose ps -q db) psql -U gymmanager -d gymmanager
+```bash
+docker compose cp sql/init.sql db:/tmp/init.sql
+docker compose exec db psql -v ON_ERROR_STOP=1 -U gymmanager -d gymmanager -f /tmp/init.sql
+```
 
 
 ## Ejecución
