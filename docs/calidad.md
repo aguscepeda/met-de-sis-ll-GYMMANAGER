@@ -62,5 +62,9 @@ y Node 24 o superior.
 - Que ESLint no encuentre errores no garantiza que las reglas de negocio,
   las consultas SQL o la concurrencia funcionen correctamente.
 - Las pruebas automatizadas y la comprobación manual complementan el análisis.
-- npm informó 4 vulnerabilidades durante la instalación.
-  Queda pendiente revisar su alcance mediante `npm audit`.
+
+- La auditoría inicial reportó 4 vulnerabilidades. Se ejecutó
+  `npm audit fix` sin `--force`, que actualizó 4 paquetes.
+  La auditoría posterior reportó 0 vulnerabilidades.
+  Después de la actualización, lint y compilación pasaron correctamente.
+  Este resultado no garantiza la ausencia de vulnerabilidades desconocidas.
