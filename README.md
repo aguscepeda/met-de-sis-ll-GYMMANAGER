@@ -106,7 +106,91 @@ Respuesta:
 { "id": 1, "estado": "cancelada", "inscripciones_canceladas": 2, ... }
 ```
 
-Códigos de error: 400 (datos o ID inválidos), 404 (la clase no existe), 409 (la transición no está permitida), 500 (error interno).
+Ejemplo de creación:
+
+```bash
+curl -X POST http://localhost:3000/api/clases \
+  -H "Content-Type: application/json" \
+  -d '{ "nombre": "Spinning", "profesor_id": 2, "inicio": "2026-12-01T18:00", "fin": "2026-12-01T19:00", "cupo": 10 }'
+```
+
+Códigos de error: 400 (datos o ID inválidos; al crear, también si el profesor no existe), 404 (la clase no existe), 409 (la transición no está permitida), 500 (error interno).
+
+## Endpoints de inscripciones
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/inscripciones` | Inscribe a un alumno en una clase. Devuelve 201 con la inscripción creada en estado `activa` |
+| DELETE | `/api/inscripciones/:id` | Cancela una inscripción. Es una **baja lógica**: la fila pasa a `cancelada` y queda en el historial. Devuelve 200 |
+| GET | `/api/inscripciones` | Lista las inscripciones, de la más reciente a la más vieja. Filtros opcionales: `?alumno_id=`, `?clase_id=` y `?estado=activa` o `?estado=cancelada` (se pueden combinar) |
+
+Estados de una inscripción: `activa` → `cancelada`. Después de cancelar, el alumno puede volver a inscribirse en la misma clase.
+
+### Inscribir
+
+```bash
+curl -X POST http://localhost:3000/api/inscripciones \
+  -H "Content-Type: application/json" \
+  -d '{ "alumno_id": 1, "clase_id": 1 }'
+```
+
+Respuesta (201):
+
+```json
+{ "id": 1, "alumno_id": 1, "clase_id": 1, "fecha": "...", "estado": "activa", "cancelada_en": null }
+```
+
+### Cancelar
+
+```bash
+curl -X DELETE http://localhost:3000/api/inscripciones/1
+```
+
+Respuesta (200): la misma inscripción con `"estado": "cancelada"` y `cancelada_en` con la fecha de la baja.
+
+### Listar
+
+```bash
+curl "http://localhost:3000/api/inscripciones?clase_id=1&estado=activa"
+```
+
+Cada elemento incluye, además de los campos de la inscripción, `alumno_nombre`, `alumno_apellido`, `clase_nombre` y `clase_inicio`.
+
+### Códigos de error
+
+Todos los errores responden con un JSON `{ "error": "mensaje" }`.
+
+| Situación | Endpoint | Código |
+|-----------|----------|--------|
+| `alumno_id` o `clase_id` no son enteros positivos | POST | 400 |
+| El ID de la inscripción no es un entero positivo | DELETE | 400 |
+| `alumno_id` o `clase_id` no son números | GET | 400 |
+| La clase o el alumno no existen | POST | 404 |
+| La inscripción no existe | DELETE | 404 |
+| La clase está `cancelada` o `finalizada` | POST | 409 |
+| La clase ya comenzó (`inicio <= ahora`) | POST | 409 |
+| El alumno ya tiene una inscripción activa en esa clase | POST | 409 |
+| La clase no tiene cupo disponible | POST | 409 |
+| La inscripción ya estaba cancelada | DELETE | 409 |
+| La clase de la inscripción ya comenzó | DELETE | 409 |
+| Error inesperado (por ejemplo, la base no responde) | todos | 500 |
+
+Dos solicitudes simultáneas por el último lugar no generan sobrecupo: la inscripción bloquea la fila de la clase (`SELECT ... FOR UPDATE`) antes de contar los lugares. El detalle de estas reglas y de la decisión está en [docs/decisiones-diseno.md](docs/decisiones-diseno.md).
+
+Para probar estas reglas contra el servidor en marcha hay un script manual (necesita los datos de ejemplo de `sql/init.sql`):
+
+```bash
+npm run dev                   # en una terminal
+npm run probar:inscripciones  # en otra
+```
+
+## Otros endpoints
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/alumnos` | Lista los alumnos, ordenados por apellido y nombre |
+| GET | `/api/profesores` | Lista los profesores, ordenados por nombre |
+| GET | `/health` | Verifica que el servidor y la base estén funcionando |
 
 El análisis de diseño está en [docs/decisiones-diseno.md](docs/decisiones-diseno.md).
 
