@@ -53,7 +53,7 @@ app.get('/health', async (_req, res) => {
       status: 'ok',
       db_time: result.rows[0].now,
     });
-  } catch (error) {
+  } catch  {
     res.status(500).json({
       status: 'error',
       message: 'No se pudo conectar a la base de datos',
