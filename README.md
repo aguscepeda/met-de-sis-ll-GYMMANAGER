@@ -82,6 +82,28 @@ Para comprobar que funciona, entrar a <http://localhost:3000/health>. Si la base
 { "status": "ok", "db_time": "..." }
 ```
 
+## Uso del frontend
+
+El servidor también sirve una interfaz web desde la carpeta `public/` (no hay que levantar nada aparte). Con `npm run dev` corriendo y la base cargada:
+
+1. Entrar a <http://localhost:3000/> (`public/index.html`). Es la pantalla de acceso: elegir un perfil (**Recepcionista**, **Profesor** o **Alumno**).
+2. Se abre el panel (`public/panel.html?rol=<perfil>`). Arriba se ve el **Estado del sistema**, que consulta `/health`; con el botón *Verificar conexión* se vuelve a probar.
+3. En el menú lateral están las secciones del perfil. Cada listado se puede recargar con *Actualizar listado*.
+
+| Perfil | Secciones | Qué se puede hacer |
+|--------|-----------|--------------------|
+| Recepcionista | Alumnos, Profesores, Clases, Inscripciones | Ver alumnos y profesores. En **Clases**: crear clases (*+ Crear clase*), finalizarlas (cuando ya terminaron) y cancelarlas (antes de que empiecen). En **Inscripciones**: inscribir a cualquier alumno y cancelar inscripciones activas |
+| Profesor | Mis clases, Mis alumnos | Elegir el *Profesor de demostración*. Ver sus clases y crear clases a su nombre. Ver los alumnos con inscripción activa en sus clases |
+| Alumno | Clases disponibles, Mis inscripciones | Elegir el *Alumno de demostración*. Inscribirse en una clase programada que no haya empezado y cancelar sus inscripciones |
+
+Para **crear una clase**: completar nombre, profesor, inicio, fin y cupo; *Validar formulario* revisa los datos en el navegador y *Guardar clase* la envía a la API. Los horarios se cargan en la hora local del gimnasio.
+
+Las acciones que cambian datos (finalizar, cancelar) piden confirmación, y los errores de la API (por ejemplo, "La clase no tiene cupo disponible") se muestran en pantalla.
+
+Limitaciones: los perfiles son **de demostración**. No hay login ni permisos reales; cualquiera puede entrar con cualquier perfil. La validación del navegador no reemplaza a la del backend, que es la que manda.
+
+El código está en `public/js/app.js` (lógica y llamadas a la API) y `public/css/styles.css` (estilos).
+
 ## Endpoints de clases
 
 | Método | Ruta | Descripción |
