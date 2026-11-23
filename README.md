@@ -214,6 +214,55 @@ npm run probar:inscripciones  # en otra
 | GET | `/api/profesores` | Lista los profesores, ordenados por nombre |
 | GET | `/health` | Verifica que el servidor y la base estén funcionando |
 
+## Estructura del proyecto
+
+```text
+met-de-sis-ll-GYMMANAGER/
+├── src/
+│   ├── index.ts            # Arranque: lee PORT y llama a app.listen()
+│   ├── app.ts              # Arma la app Express: middlewares, rutas y archivos estáticos
+│   ├── db.ts               # Pool de conexiones a PostgreSQL (usa DATABASE_URL)
+│   ├── errors.ts           # ReglaNegocioError: error de negocio con su código HTTP
+│   ├── routes/             # Qué URL y método va a qué controlador
+│   │   ├── clases.routes.ts
+│   │   └── inscripciones.routes.ts
+│   ├── controllers/        # Leen la petición, llaman al servicio y arman la respuesta HTTP
+│   │   ├── clases.controller.ts
+│   │   └── inscripciones.controller.ts
+│   ├── services/           # Reglas de negocio, transacciones y consultas SQL
+│   │   ├── clases.service.ts
+│   │   └── inscripciones.service.ts
+│   └── types/              # Interfaces y tipos de TypeScript (entidades y DTOs)
+│       ├── clase.ts
+│       └── inscripcion.ts
+├── public/                 # Frontend estático que sirve Express
+│   ├── index.html          # Selección de perfil
+│   ├── panel.html          # Panel de gestión
+│   ├── js/app.js
+│   └── css/styles.css
+├── sql/init.sql            # Tablas, índices y datos de ejemplo
+├── scripts/probar-inscripciones.mjs  # Prueba manual de reglas y concurrencia
+├── docs/decisiones-diseno.md         # Decisiones de diseño y sus alternativas
+├── docker-compose.yml      # PostgreSQL 16 para desarrollo
+├── .env.example            # Variables de entorno de ejemplo
+└── package.json            # Dependencias y scripts de npm
+```
+
+### Cómo viaja una petición
+
+Cada módulo (clases e inscripciones) sigue las mismas capas:
+
+```text
+HTTP → routes → controllers → services → PostgreSQL (db.ts)
+```
+
+- **Routes** solo declaran los endpoints. Por ejemplo, `DELETE /api/inscripciones/:id` llama a `inscripcionesController.cancelar`.
+- **Controllers** convierten la petición en datos para el servicio y la respuesta en un código HTTP. Si el servicio lanza un `ReglaNegocioError`, responden con su código (400, 404 o 409); cualquier otro error es un 500 genérico, sin exponer detalles de la base.
+- **Services** tienen las reglas de negocio (cupo, estados, horarios, duplicados) y las consultas SQL parametrizadas. Las operaciones que leen y después escriben corren en una transacción con `SELECT ... FOR UPDATE`.
+- **Types** definen la forma de los datos que se intercambian entre capas (`Clase`, `Inscripcion`, `CrearClaseDTO`, etc.).
+
+`app.ts` está separado de `index.ts` para poder importar la aplicación sin abrir un puerto, por ejemplo desde los tests. Los endpoints de solo lectura `/api/alumnos`, `/api/profesores` y `/health` están definidos directamente en `app.ts`.
+
 El análisis de diseño está en [docs/decisiones-diseno.md](docs/decisiones-diseno.md).
 
 ## Servicios necesarios
