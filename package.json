@@ -7,6 +7,8 @@
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "probar:inscripciones": "node scripts/probar-inscripciones.mjs"
   },
   "repository": {
@@ -30,8 +32,11 @@
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.2",
     "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=20"
