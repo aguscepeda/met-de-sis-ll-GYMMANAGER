@@ -29,8 +29,8 @@ Al revisar el archivo `src/index.ts` inicial del repositorio, se detectaron las 
 Se decidió adoptar la **Alternativa 2**:
 1. **Refactoring del servidor:** Se extrajo la configuración de Express a `src/app.ts` y se dejó en `src/index.ts` únicamente la invocación a `app.listen()`, separando el armado de la aplicación de su arranque en red.
 2. **Diseño en capas livianas:**
-   - **Rutas (`clases.routes.ts`):** Mapeo declarativo de endpoints (`GET /`, `POST /`, `GET /:id`).
-   - **Controlador (`clases.controller.ts`):** Captura peticiones, orquesta llamadas y responde con los códigos semánticos correspondientes (`200 OK`, `201 Created`, `400 Bad Request`, `404 Not Found`, `500 Internal Server Error`).
+   - **Rutas (`clases.routes.ts`):** Mapeo declarativo de endpoints (`GET /`, `POST /`, `GET /:id`). Más adelante se sumaron `PATCH /:id/finalizar` y `PATCH /:id/cancelar` (ver [Estados de clase](#estados-de-clase-finalizar-y-cancelar)).
+   - **Controlador (`clases.controller.ts`):** Captura peticiones, orquesta llamadas y responde con los códigos semánticos correspondientes (`200 OK`, `201 Created`, `400 Bad Request`, `404 Not Found`, `500 Internal Server Error`; con los cambios de estado se agregó `409 Conflict`).
    - **Servicio (`clases.service.ts`):** Centraliza la lógica de negocio (validar nombre no vacío, cupo entero positivo, consistencia temporal `inicio < fin` y existencia de profesor) y la ejecución de consultas parametrizadas a la base de datos.
 
 ### 5. Evidencia y trade-offs
@@ -56,7 +56,9 @@ Tabla `inscripcion (id, alumno_id, clase_id, fecha, estado, cancelada_en)` con `
 | Clase que ya comenzó (`inicio <= ahora`) | 409 |
 | Alumno ya inscripto (activa) | 409 |
 | Cupo completo | 409 |
-| Cancelar una clase ya iniciada / inscripción ya cancelada | 409 |
+| Cancelar: ID de inscripción inválido | 400 |
+| Cancelar: inscripción inexistente | 404 |
+| Cancelar una inscripción de una clase ya iniciada / inscripción ya cancelada | 409 |
 
 ### 3. Problema: dos solicitudes por el último lugar
 Con una lógica ingenua ("contar inscriptos; si hay lugar, insertar") hay una condición de carrera: dos solicitudes simultáneas cuentan *antes* de que la otra inserte, ambas ven "queda 1 lugar" y ambas insertan → **sobrecupo**. Ocurre porque *verificar* e *insertar* no son una operación atómica.
@@ -80,6 +82,8 @@ Se implementó la alternativa 1: toda la inscripción corre en una transacción 
 Con una clase de cupo 1 y dos solicitudes simultáneas (forzando el solapamiento con `pg_sleep`):
 - **Sin** `FOR UPDATE`: ambas se inscriben (2 inscriptos en cupo 1).
 - **Con** `FOR UPDATE`: una se inscribe y la otra recibe "sin cupo" (1 inscripto).
+
+El escenario con el código actual (con `FOR UPDATE`) se puede repetir con `npm run probar:inscripciones` ([`scripts/probar-inscripciones.mjs`](../scripts/probar-inscripciones.mjs)), que manda varias solicitudes simultáneas por el último lugar de una clase de cupo 1 y verifica también duplicados, cancelación, clase iniciada e IDs inexistentes o inválidos. Necesita el servidor en marcha.
 
 
 ### 6. Trade-offs asumidos
