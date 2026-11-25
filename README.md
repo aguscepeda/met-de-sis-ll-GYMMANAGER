@@ -8,7 +8,7 @@ API para la gestión de un gimnasio (alumnos, profesores, clases e inscripciones
 - PostgreSQL 16 (vía Docker)
 
 ## Requisitos previos
-- Node.js 20 o superior (ver `.nvmrc`)
+- Node.js 20.19 o superior (ver `.nvmrc`). ESLint 10 no funciona con versiones anteriores de Node 20
 - Docker y Docker Compose
 - Git
 
@@ -312,3 +312,31 @@ Si falla con un error de conexión, revisar que el contenedor esté levantado (`
 Limitación: los tests corren en secuencia y no prueban la concurrencia por el último lugar. Eso lo cubre el script manual `npm run probar:inscripciones` (ver [Endpoints de inscripciones](#endpoints-de-inscripciones)).
 
 Por qué se eligió cada caso, los resultados y las limitaciones están en [docs/testing.md](docs/testing.md). La elección de las herramientas y de la base está en [tests/README.md](tests/README.md).
+
+## Calidad
+
+Para revisar el código se usa **ESLint** con **typescript-eslint**, con las reglas recomendadas, sobre los archivos de `src/`. La configuración está en `eslint.config.mjs`. Este análisis no necesita la base ni el servidor.
+
+```bash
+npm run lint
+```
+
+Resultado esperado: termina sin errores ni advertencias (no muestra nada).
+
+Para comprobar que TypeScript compila sin errores:
+
+```bash
+npm run build
+```
+
+ESLint 10 necesita Node 20.19 o superior (o 22.13 o superior). Si `npm run lint` falla al arrancar, revisar la versión con `node --version`.
+
+Antes de abrir un Pull Request conviene correr los tres comandos:
+
+```bash
+npm run lint
+npm run build
+npm test
+```
+
+Qué encontró el análisis, qué se corrigió y qué quedó pendiente está en [docs/calidad.md](docs/calidad.md). La configuración y las correcciones están en commits separados, así que el historial de Git muestra el antes y el después.
