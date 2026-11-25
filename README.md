@@ -8,7 +8,7 @@ API para la gestión de un gimnasio (alumnos, profesores, clases e inscripciones
 - PostgreSQL 16 (vía Docker)
 
 ## Requisitos previos
-- Node.js 20 o superior (ver `.nvmrc`)
+- Node.js 20.19 o superior (ver `.nvmrc`). ESLint 10 no funciona con versiones anteriores de Node 20
 - Docker y Docker Compose
 - Git
 
@@ -116,24 +116,28 @@ El código está en `public/js/app.js` (lógica y llamadas a la API) y `public/c
 
 Estados de una clase: `programada` → `finalizada` o `cancelada`. Los dos últimos son definitivos: intentar cambiarlos devuelve 409.
 
-Ejemplo:
+Los datos de ejemplo de `sql/init.sql` traen alumnos y profesores, pero **no traen clases**. Para probar los ejemplos que siguen, primero hay que crear una. En una base recién cargada, esa primera clase recibe el ID 1, que es el que usan los demás ejemplos.
 
-```bash
-curl -X PATCH http://localhost:3000/api/clases/1/cancelar
-```
+Los ejemplos usan la sintaxis de `curl` en bash (Git Bash, macOS o Linux). En Windows PowerShell, `curl` es otro comando: hay que escribir `curl.exe`, poner todo en una sola línea y escapar las comillas del JSON. Es más simple correrlos desde Git Bash o probar desde el frontend.
 
-Respuesta:
-
-```json
-{ "id": 1, "estado": "cancelada", "inscripciones_canceladas": 2, ... }
-```
-
-Ejemplo de creación:
+Ejemplo de creación (devuelve 201):
 
 ```bash
 curl -X POST http://localhost:3000/api/clases \
   -H "Content-Type: application/json" \
   -d '{ "nombre": "Spinning", "profesor_id": 2, "inicio": "2026-12-01T18:00", "fin": "2026-12-01T19:00", "cupo": 10 }'
+```
+
+Ejemplo de cancelación:
+
+```bash
+curl -X PATCH http://localhost:3000/api/clases/1/cancelar
+```
+
+Respuesta (`inscripciones_canceladas` dice cuántas inscripciones activas se dieron de baja):
+
+```json
+{ "id": 1, "estado": "cancelada", "inscripciones_canceladas": 2, ... }
 ```
 
 Códigos de error: 400 (datos o ID inválidos; al crear, también si el profesor no existe), 404 (la clase no existe), 409 (la transición no está permitida), 500 (error interno).
@@ -149,6 +153,8 @@ Códigos de error: 400 (datos o ID inválidos; al crear, también si el profesor
 Estados de una inscripción: `activa` → `cancelada`. Después de cancelar, el alumno puede volver a inscribirse en la misma clase.
 
 ### Inscribir
+
+La clase tiene que estar `programada` y no haber empezado. Si cancelaste la clase 1 con el ejemplo anterior, creá otra y usá su ID en `clase_id`.
 
 ```bash
 curl -X POST http://localhost:3000/api/inscripciones \
@@ -240,11 +246,24 @@ met-de-sis-ll-GYMMANAGER/
 │   ├── panel.html          # Panel de gestión
 │   ├── js/app.js
 │   └── css/styles.css
+├── tests/                  # Tests de integración (Vitest + Supertest)
+│   ├── clases.test.ts      # Casos normales de clases
+│   ├── inscripciones.test.ts           # Casos normales de inscripciones
+│   ├── inscripciones-errores.test.ts   # Casos de error y límite (400, 404, 409)
+│   ├── helpers.ts          # Fechas relativas, datos semilla y limpieza de la base
+│   └── README.md           # Elección de herramientas y estrategia de base
+├── docs/
+│   ├── decisiones-diseno.md  # Decisiones de diseño y sus alternativas
+│   ├── testing.md            # Justificación de los casos de prueba y resultados
+│   └── calidad.md            # Revisión con ESLint: hallazgos y correcciones
 ├── sql/init.sql            # Tablas, índices y datos de ejemplo
 ├── scripts/probar-inscripciones.mjs  # Prueba manual de reglas y concurrencia
-├── docs/decisiones-diseno.md         # Decisiones de diseño y sus alternativas
 ├── docker-compose.yml      # PostgreSQL 16 para desarrollo
 ├── .env.example            # Variables de entorno de ejemplo
+├── .nvmrc                  # Versión de Node recomendada
+├── tsconfig.json           # Configuración del compilador de TypeScript
+├── vitest.config.ts        # Configuración de los tests
+├── eslint.config.mjs       # Reglas de ESLint
 └── package.json            # Dependencias y scripts de npm
 ```
 
@@ -267,3 +286,70 @@ El análisis de diseño está en [docs/decisiones-diseno.md](docs/decisiones-dis
 
 ## Servicios necesarios
 - PostgreSQL 16, se levanta con `docker compose up -d` (ver `docker-compose.yml`)
+
+## Tests
+
+Los tests son de integración y usan **Vitest** con **Supertest**. Supertest manda pedidos HTTP directamente a `src/app.ts`, sin abrir un puerto, así que **no hace falta tener `npm run dev` corriendo**. Lo que sí hace falta es la base: los tests corren contra el PostgreSQL de Docker, no contra una base simulada, porque varias reglas viven en la base (transacciones, `SELECT ... FOR UPDATE` y el índice único parcial).
+
+Antes de correrlos, hay que completar los pasos 1 a 5 de [Instalación](#instalación): `.env` copiado, base levantada y `sql/init.sql` cargado. Después:
+
+```bash
+npm test
+```
+
+Para que se vuelvan a ejecutar cada vez que se guarda un archivo:
+
+```bash
+npm run test:watch
+```
+
+Resultado esperado: **3 archivos y 25 tests en verde**. Al final de la salida tiene que aparecer:
+
+```text
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+```
+
+Antes de los resultados puede aparecer un aviso de Vite que empieza con `(!) Your Vite config uses features that are unsupported by configLoader: 'native'`. Es solo una advertencia sobre una versión futura de Vite: no hace fallar los tests.
+
+| Archivo | Qué prueba | Tests |
+|---------|------------|-------|
+| `tests/clases.test.ts` | Casos normales de clases: crear (201), listar, filtrar por profesor y obtener por ID | 4 |
+| `tests/inscripciones.test.ts` | Casos normales de inscripciones: inscribir (201), listar y cancelar (200) | 3 |
+| `tests/inscripciones-errores.test.ts` | Errores y límites: IDs inválidos (400), clase, alumno o inscripción inexistente (404), clase cancelada, finalizada o ya iniciada, duplicado, **cupo completo** y doble cancelación (409), y volver a inscribirse después de cancelar (201) | 18 |
+
+Cada test crea sus propias clases y al terminar borra solo lo que creó, así que las semillas de `sql/init.sql` quedan intactas y se pueden correr las veces que se quiera. Los archivos se ejecutan uno por vez (`fileParallelism: false` en `vitest.config.ts`) para que no se pisen sobre la misma base.
+
+Si falla con un error de conexión, revisar que el contenedor esté levantado (`docker compose ps`) y que `DATABASE_URL` en `.env` sea la de [Configuración](#configuración).
+
+Limitación: los tests corren en secuencia y no prueban la concurrencia por el último lugar. Eso lo cubre el script manual `npm run probar:inscripciones` (ver [Endpoints de inscripciones](#endpoints-de-inscripciones)).
+
+Por qué se eligió cada caso, los resultados y las limitaciones están en [docs/testing.md](docs/testing.md). La elección de las herramientas y de la base está en [tests/README.md](tests/README.md).
+
+## Calidad
+
+Para revisar el código se usa **ESLint** con **typescript-eslint**, con las reglas recomendadas, sobre los archivos de `src/`. La configuración está en `eslint.config.mjs`. Este análisis no necesita la base ni el servidor.
+
+```bash
+npm run lint
+```
+
+Resultado esperado: sin errores ni advertencias. Solo se ve el comando que se ejecutó (`> eslint src`), sin ninguna línea más. Si hubiera problemas, ESLint listaría cada uno con su archivo, línea y regla.
+
+Para comprobar que TypeScript compila sin errores:
+
+```bash
+npm run build
+```
+
+ESLint 10 necesita Node 20.19 o superior (o 22.13 o superior). Si `npm run lint` falla al arrancar, revisar la versión con `node --version`.
+
+Antes de abrir un Pull Request conviene correr los tres comandos:
+
+```bash
+npm run lint
+npm run build
+npm test
+```
+
+Qué encontró el análisis, qué se corrigió y qué quedó pendiente está en [docs/calidad.md](docs/calidad.md). La configuración y las correcciones están en commits separados, así que el historial de Git muestra el antes y el después.
