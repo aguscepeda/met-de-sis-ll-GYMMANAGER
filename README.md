@@ -116,24 +116,28 @@ El código está en `public/js/app.js` (lógica y llamadas a la API) y `public/c
 
 Estados de una clase: `programada` → `finalizada` o `cancelada`. Los dos últimos son definitivos: intentar cambiarlos devuelve 409.
 
-Ejemplo:
+Los datos de ejemplo de `sql/init.sql` traen alumnos y profesores, pero **no traen clases**. Para probar los ejemplos que siguen, primero hay que crear una. En una base recién cargada, esa primera clase recibe el ID 1, que es el que usan los demás ejemplos.
 
-```bash
-curl -X PATCH http://localhost:3000/api/clases/1/cancelar
-```
+Los ejemplos usan la sintaxis de `curl` en bash (Git Bash, macOS o Linux). En Windows PowerShell, `curl` es otro comando: hay que escribir `curl.exe`, poner todo en una sola línea y escapar las comillas del JSON. Es más simple correrlos desde Git Bash o probar desde el frontend.
 
-Respuesta:
-
-```json
-{ "id": 1, "estado": "cancelada", "inscripciones_canceladas": 2, ... }
-```
-
-Ejemplo de creación:
+Ejemplo de creación (devuelve 201):
 
 ```bash
 curl -X POST http://localhost:3000/api/clases \
   -H "Content-Type: application/json" \
   -d '{ "nombre": "Spinning", "profesor_id": 2, "inicio": "2026-12-01T18:00", "fin": "2026-12-01T19:00", "cupo": 10 }'
+```
+
+Ejemplo de cancelación:
+
+```bash
+curl -X PATCH http://localhost:3000/api/clases/1/cancelar
+```
+
+Respuesta (`inscripciones_canceladas` dice cuántas inscripciones activas se dieron de baja):
+
+```json
+{ "id": 1, "estado": "cancelada", "inscripciones_canceladas": 2, ... }
 ```
 
 Códigos de error: 400 (datos o ID inválidos; al crear, también si el profesor no existe), 404 (la clase no existe), 409 (la transición no está permitida), 500 (error interno).
@@ -149,6 +153,8 @@ Códigos de error: 400 (datos o ID inválidos; al crear, también si el profesor
 Estados de una inscripción: `activa` → `cancelada`. Después de cancelar, el alumno puede volver a inscribirse en la misma clase.
 
 ### Inscribir
+
+La clase tiene que estar `programada` y no haber empezado. Si cancelaste la clase 1 con el ejemplo anterior, creá otra y usá su ID en `clase_id`.
 
 ```bash
 curl -X POST http://localhost:3000/api/inscripciones \
