@@ -303,7 +303,14 @@ Para que se vuelvan a ejecutar cada vez que se guarda un archivo:
 npm run test:watch
 ```
 
-Resultado esperado: **3 archivos y 25 tests en verde**.
+Resultado esperado: **3 archivos y 25 tests en verde**. Al final de la salida tiene que aparecer:
+
+```text
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+```
+
+Antes de los resultados puede aparecer un aviso de Vite que empieza con `(!) Your Vite config uses features that are unsupported by configLoader: 'native'`. Es solo una advertencia sobre una versión futura de Vite: no hace fallar los tests.
 
 | Archivo | Qué prueba | Tests |
 |---------|------------|-------|
@@ -327,7 +334,7 @@ Para revisar el código se usa **ESLint** con **typescript-eslint**, con las reg
 npm run lint
 ```
 
-Resultado esperado: termina sin errores ni advertencias (no muestra nada).
+Resultado esperado: sin errores ni advertencias. Solo se ve el comando que se ejecutó (`> eslint src`), sin ninguna línea más. Si hubiera problemas, ESLint listaría cada uno con su archivo, línea y regla.
 
 Para comprobar que TypeScript compila sin errores:
 
