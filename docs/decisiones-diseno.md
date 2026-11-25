@@ -99,7 +99,7 @@ El escenario con el código actual (con `FOR UPDATE`) se puede repetir con `npm 
 - [`src/controllers/clases.controller.ts`](../src/controllers/clases.controller.ts): `responderError()` (línea 10) y los handlers `finalizar` y `cancelar`.
 - [`src/routes/clases.routes.ts`](../src/routes/clases.routes.ts): rutas `PATCH /:id/finalizar` y `PATCH /:id/cancelar` (líneas 9 y 10).
 - [`src/types/clase.ts`](../src/types/clase.ts): tipo `EstadoClase` e interfaz `ClaseCancelada`.
-- Punto de contacto con inscripciones: [`src/services/inscripciones.service.ts`](../src/services/inscripciones.service.ts), línea 28, donde `inscribir()` bloquea la fila de la clase.
+- Punto de contacto con inscripciones: [`src/services/inscripciones.service.ts`](../src/services/inscripciones.service.ts), líneas 26 y 27, donde `inscribir()` bloquea la fila de la clase.
 
 ### 2. Diagnóstico
 - **Estado sin comportamiento.** La tabla `clase` ya tenía la columna `estado` con el `CHECK` `programada | finalizada | cancelada`, pero ningún código la cambiaba. Toda clase quedaba `programada` para siempre.
