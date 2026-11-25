@@ -30,20 +30,7 @@ docker compose exec db psql -v ON_ERROR_STOP=1 -U gymmanager -d gymmanager -f /t
 Para correr los tests:
 
 ```bash
-## Resultado
-
-```text
- RUN  v4.1.12 C:/Users/Agustin/Desktop/PROG lll/PARCIAL1/met-de-sis-ll-GYMMANAGER
-
- ✓ tests/inscripciones-errores.test.ts (18 tests) 252ms
- ✓ tests/inscripciones.test.ts (3 tests) 90ms
- ✓ tests/clases.test.ts (4 tests) 83ms
-
- Test Files  3 passed (3)
-      Tests  25 passed (25)
-   Start at  23:43:47
-   Duration  1.82s (transform 91ms, setup 0ms, import 851ms, tests 424ms, environment 0ms)
-```
+npm test
 ```
 
 `npm run test:watch` vuelve a ejecutarlos cada vez que se guarda un archivo.
@@ -85,7 +72,16 @@ Están en `tests/inscripciones-errores.test.ts`.
 ## Resultado
 
 ```text
-<pegar acá la salida de npm test>
+ RUN  v4.1.12 C:/Users/Agustin/Desktop/PROG lll/PARCIAL1/met-de-sis-ll-GYMMANAGER
+
+ ✓ tests/inscripciones-errores.test.ts (18 tests) 252ms
+ ✓ tests/inscripciones.test.ts (3 tests) 90ms
+ ✓ tests/clases.test.ts (4 tests) 83ms
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  23:43:47
+   Duration  1.82s (transform 91ms, setup 0ms, import 851ms, tests 424ms, environment 0ms)
 ```
 
 Se esperan 3 archivos y 25 tests: 4 de clases, 3 de inscripciones normales
@@ -104,4 +100,6 @@ documentación. No se modifica el test solo para que pase.
   por el último lugar. Esa garantía la da `SELECT ... FOR UPDATE` y hoy solo
   la cubre el script manual `npm run probar:inscripciones`
   (`scripts/probar-inscripciones.mjs`), que necesita el servidor en marcha.
-- Dependen del entorno: necesitan
+- Dependen del entorno: necesitan Docker con PostgreSQL en marcha, el `.env`
+  configurado y las semillas de `sql/init.sql` cargadas. Sin eso fallan por
+  la conexión, no por una regla de negocio.
