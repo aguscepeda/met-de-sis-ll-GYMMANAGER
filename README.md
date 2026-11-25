@@ -280,3 +280,35 @@ El análisis de diseño está en [docs/decisiones-diseno.md](docs/decisiones-dis
 
 ## Servicios necesarios
 - PostgreSQL 16, se levanta con `docker compose up -d` (ver `docker-compose.yml`)
+
+## Tests
+
+Los tests son de integración y usan **Vitest** con **Supertest**. Supertest manda pedidos HTTP directamente a `src/app.ts`, sin abrir un puerto, así que **no hace falta tener `npm run dev` corriendo**. Lo que sí hace falta es la base: los tests corren contra el PostgreSQL de Docker, no contra una base simulada, porque varias reglas viven en la base (transacciones, `SELECT ... FOR UPDATE` y el índice único parcial).
+
+Antes de correrlos, hay que completar los pasos 1 a 5 de [Instalación](#instalación): `.env` copiado, base levantada y `sql/init.sql` cargado. Después:
+
+```bash
+npm test
+```
+
+Para que se vuelvan a ejecutar cada vez que se guarda un archivo:
+
+```bash
+npm run test:watch
+```
+
+Resultado esperado: **3 archivos y 25 tests en verde**.
+
+| Archivo | Qué prueba | Tests |
+|---------|------------|-------|
+| `tests/clases.test.ts` | Casos normales de clases: crear (201), listar, filtrar por profesor y obtener por ID | 4 |
+| `tests/inscripciones.test.ts` | Casos normales de inscripciones: inscribir (201), listar y cancelar (200) | 3 |
+| `tests/inscripciones-errores.test.ts` | Errores y límites: IDs inválidos (400), clase, alumno o inscripción inexistente (404), clase cancelada, finalizada o ya iniciada, duplicado, **cupo completo** y doble cancelación (409), y volver a inscribirse después de cancelar (201) | 18 |
+
+Cada test crea sus propias clases y al terminar borra solo lo que creó, así que las semillas de `sql/init.sql` quedan intactas y se pueden correr las veces que se quiera. Los archivos se ejecutan uno por vez (`fileParallelism: false` en `vitest.config.ts`) para que no se pisen sobre la misma base.
+
+Si falla con un error de conexión, revisar que el contenedor esté levantado (`docker compose ps`) y que `DATABASE_URL` en `.env` sea la de [Configuración](#configuración).
+
+Limitación: los tests corren en secuencia y no prueban la concurrencia por el último lugar. Eso lo cubre el script manual `npm run probar:inscripciones` (ver [Endpoints de inscripciones](#endpoints-de-inscripciones)).
+
+Por qué se eligió cada caso, los resultados y las limitaciones están en [docs/testing.md](docs/testing.md). La elección de las herramientas y de la base está en [tests/README.md](tests/README.md).
