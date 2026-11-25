@@ -240,11 +240,24 @@ met-de-sis-ll-GYMMANAGER/
 │   ├── panel.html          # Panel de gestión
 │   ├── js/app.js
 │   └── css/styles.css
+├── tests/                  # Tests de integración (Vitest + Supertest)
+│   ├── clases.test.ts      # Casos normales de clases
+│   ├── inscripciones.test.ts           # Casos normales de inscripciones
+│   ├── inscripciones-errores.test.ts   # Casos de error y límite (400, 404, 409)
+│   ├── helpers.ts          # Fechas relativas, datos semilla y limpieza de la base
+│   └── README.md           # Elección de herramientas y estrategia de base
+├── docs/
+│   ├── decisiones-diseno.md  # Decisiones de diseño y sus alternativas
+│   ├── testing.md            # Justificación de los casos de prueba y resultados
+│   └── calidad.md            # Revisión con ESLint: hallazgos y correcciones
 ├── sql/init.sql            # Tablas, índices y datos de ejemplo
 ├── scripts/probar-inscripciones.mjs  # Prueba manual de reglas y concurrencia
-├── docs/decisiones-diseno.md         # Decisiones de diseño y sus alternativas
 ├── docker-compose.yml      # PostgreSQL 16 para desarrollo
 ├── .env.example            # Variables de entorno de ejemplo
+├── .nvmrc                  # Versión de Node recomendada
+├── tsconfig.json           # Configuración del compilador de TypeScript
+├── vitest.config.ts        # Configuración de los tests
+├── eslint.config.mjs       # Reglas de ESLint
 └── package.json            # Dependencias y scripts de npm
 ```
 
