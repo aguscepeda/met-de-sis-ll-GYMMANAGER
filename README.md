@@ -9,8 +9,10 @@ API para la gestión de un gimnasio (alumnos, profesores, clases e inscripciones
 
 ## Requisitos previos
 - Node.js 20.19 o superior (ver `.nvmrc`). ESLint 10 no funciona con versiones anteriores de Node 20
-- Docker y Docker Compose
+- Docker y Docker Compose. En Windows y macOS, **Docker Desktop tiene que estar abierto** (abajo a la izquierda dice *Engine running*) antes de correr cualquier comando `docker`. Si se trabaja desde WSL, además hay que activar la distribución en *Settings → Resources → WSL Integration*
 - Git
+
+Servicio necesario: PostgreSQL 16, que se levanta con Docker (ver paso 4 de [Instalación](#instalación)). No hace falta instalar PostgreSQL en la máquina.
 
 ## Instalación
 
@@ -24,8 +26,10 @@ API para la gestión de un gimnasio (alumnos, profesores, clases e inscripciones
 2. Instalar dependencias
 
    ```bash
-   npm install
+   npm ci
    ```
+
+   `npm ci` instala exactamente las versiones de `package-lock.json`, así todo el equipo trabaja con las mismas. Hay que volver a correrlo **después de cada `git pull`** que cambie `package.json` o `package-lock.json` (por ejemplo, cuando se agregaron Vitest y ESLint).
 
 3. Copiar el archivo de configuración (ver [Configuración](#configuración))
 
@@ -49,6 +53,8 @@ API para la gestión de un gimnasio (alumnos, profesores, clases e inscripciones
    ```
 
    El script es idempotente: se puede volver a correr sin duplicar datos.
+
+   **Este paso no es automático.** `docker compose up -d` crea una base vacía; sin este paso no existen las tablas y la aplicación y los tests fallan (ver [Problemas comunes](#problemas-comunes)). Si se recrea la base con `docker compose down -v`, hay que repetirlo.
 
 ## Configuración
 
@@ -284,9 +290,6 @@ HTTP → routes → controllers → services → PostgreSQL (db.ts)
 
 El análisis de diseño está en [docs/decisiones-diseno.md](docs/decisiones-diseno.md).
 
-## Servicios necesarios
-- PostgreSQL 16, se levanta con `docker compose up -d` (ver `docker-compose.yml`)
-
 ## Tests
 
 Los tests son de integración y usan **Vitest** con **Supertest**. Supertest manda pedidos HTTP directamente a `src/app.ts`, sin abrir un puerto, así que **no hace falta tener `npm run dev` corriendo**. Lo que sí hace falta es la base: los tests corren contra el PostgreSQL de Docker, no contra una base simulada, porque varias reglas viven en la base (transacciones, `SELECT ... FOR UPDATE` y el índice único parcial).
@@ -320,7 +323,9 @@ Antes de los resultados puede aparecer un aviso de Vite que empieza con `(!) You
 
 Cada test crea sus propias clases y al terminar borra solo lo que creó, así que las semillas de `sql/init.sql` quedan intactas y se pueden correr las veces que se quiera. Los archivos se ejecutan uno por vez (`fileParallelism: false` en `vitest.config.ts`) para que no se pisen sobre la misma base.
 
-Si falla con un error de conexión, revisar que el contenedor esté levantado (`docker compose ps`) y que `DATABASE_URL` en `.env` sea la de [Configuración](#configuración).
+Si los tests no pasan, ver [Problemas comunes](#problemas-comunes).
+
+Cómo leer el resultado: un test **failed** corrió y su aserción no se cumplió (posible defecto en el código). Si en cambio aparecen archivos fallidos con todos sus tests **skipped**, el problema está en la preparación (por ejemplo, la base no tiene tablas) y no se llegó a verificar nada.
 
 Limitación: los tests corren en secuencia y no prueban la concurrencia por el último lugar. Eso lo cubre el script manual `npm run probar:inscripciones` (ver [Endpoints de inscripciones](#endpoints-de-inscripciones)).
 
@@ -353,3 +358,14 @@ npm test
 ```
 
 Qué encontró el análisis, qué se corrigió y qué quedó pendiente está en [docs/calidad.md](docs/calidad.md). La configuración y las correcciones están en commits separados, así que el historial de Git muestra el antes y el después.
+
+## Problemas comunes
+
+| Mensaje | Causa | Solución |
+|---------|-------|----------|
+| `npm ERR! Missing script: "test"` (o `"lint"`) | La copia local es anterior a la configuración de tests y calidad | `git checkout main` y `git pull origin main` |
+| `sh: vitest: not found` o `eslint: not found` | Faltan dependencias nuevas en `node_modules` | `npm ci` |
+| `failed to connect to the docker API` / `Cannot connect to the Docker daemon` | Docker Desktop no está abierto | Abrir Docker Desktop, esperar *Engine running* y repetir el comando |
+| `ECONNREFUSED` al correr la app o los tests | La base no está levantada o `DATABASE_URL` no coincide | `docker compose up -d`, revisar con `docker compose ps` y comparar `.env` con [Configuración](#configuración) |
+| `relation "alumno" does not exist` (o `profesor`), con los tests en *skipped* | La base existe pero está vacía: falta cargar `sql/init.sql` | Repetir el paso 5 de [Instalación](#instalación) y volver a correr `npm test` |
+| `npm run lint` falla al arrancar | Versión de Node anterior a 20.19 | Revisar con `node --version` y actualizar (ver `.nvmrc`) |
